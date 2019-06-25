@@ -1,28 +1,21 @@
 import React from "react";
-import { Scene, Router, Actions } from "react-native-router-flux";
-import {
-  Menu,
-  MenuProvider,
-  MenuOptions,
-  MenuOption,
-  MenuTrigger
-} from "react-native-popup-menu";
-import HomeScreen from "./screen/home/HomeScreen";
+import { Scene, Router } from "react-native-router-flux";
+import HomeScreen from "./src/screen/home/HomeScreen";
+import ReplyScreen from "./src/screen/home/ReplyScreen";
 
 const RouterComponent = () => (
-  <MenuProvider>
-    <Router>
-      <Scene key="main">
-        <Scene
-          key="HomeScreen"
-          component={HomeScreen}
-          title="HomeScreen"
-          initial
-          hideNavBar
-        />
-      </Scene>
-    </Router>
-  </MenuProvider>
+  <Router>
+    <Scene key="main">
+      <Scene
+        key="HomeScreen"
+        component={HomeScreen}
+        title="HomeScreen"
+        initial
+        hideNavBar
+      />
+      <Scene key="ReplyScreen" component={ReplyScreen} title="Reply" />
+    </Scene>
+  </Router>
 );
 
 export default RouterComponent;

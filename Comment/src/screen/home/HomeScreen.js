@@ -5,38 +5,41 @@ import {
   View,
   TouchableOpacity,
   Image,
-  ScrollView,
   FlatList,
   ActivityIndicator,
   Modal,
-  ToastAndroid
+  ToastAndroid,
+  Alert,
+  Keyboard
 } from "react-native";
-import { ListItem, Card, Icon, Button, Input } from "react-native-elements";
+import { Icon, Button, Input } from "react-native-elements";
 import { connect } from "react-redux";
-import { fetchUser } from "./HomeActionCreators";
-import HeaderComponentWithIcon from "../../common/HeaderComponentWithIcon";
+import { fetchComment } from "./HomeActionCreators";
+import HeaderComponent from "../../common/HeaderComponent";
+import { Actions } from "react-native-router-flux";
 
 class HomeScreen extends Component {
-  static navigationOptions = {
-    title: "Login",
-    tabBarIcon: ({ tintColor, focused }) => (
-      <Icon
-        name="sign-in"
-        type="font-awesome"
-        size={24}
-        iconStyle={{ color: tintColor }}
-      />
-    )
-  };
-
   componentWillMount() {
-    console.log("mount");
-
     this.setState({ comments: [] });
     if (this.state.uploading === false) {
       this.setState({ uploading: true });
     }
-    this.fetchUser();
+    this.fetchComment();
+  }
+
+  constructor(props) {
+    super(props);
+    this.state = {
+      comments: [],
+      uploading: true,
+      showModal: false,
+      showLoginModal: false,
+      caption: "",
+      name: "",
+      parentCommentId: "",
+      enterUserName: "",
+      enterPassword: ""
+    };
   }
 
   componentWillReceiveProps(nextprops) {
@@ -60,22 +63,52 @@ class HomeScreen extends Component {
     }
   }
 
-  constructor(props) {
-    super(props);
-    this.state = {
-      comments: [],
-      uploading: true,
-      showModal: false,
-      caption: "",
-      name: "Neha",
-      parentCommentId: ""
-    };
+  async fetchComment() {
+    await this.props.fetchComment();
   }
 
-  async fetchUser() {
-    await this.props.fetchUser();
-  }
+  handleLogin = async () => {
+    if (this.state.enterUserName === "" || this.state.enterPassword === "") {
+      ToastAndroid.show("Please enter all fields", ToastAndroid.SHORT);
+      return;
+    }
+    const firebase = require("firebase");
+    this.setState({ uploading: !this.state.uploading });
+    const { enterUserName, enterPassword } = this.state;
+    Keyboard.dismiss();
 
+    firebase
+      .auth()
+      .signInWithEmailAndPassword(enterUserName, enterPassword)
+      .then(() => this.onLoginSuccess())
+      .catch(this.onLoginFailed.bind(this));
+  };
+
+  onLoginSuccess() {
+    console.log("success");
+    this.setState({
+      uploading: !this.state.uploading,
+      name: this.state.enterUserName,
+      showLoginModal: false,
+      showModal: true
+    });
+  }
+  onLoginFailed() {
+    console.log("failure");
+    this.setState({ uploading: !this.state.uploading });
+    Alert.alert(
+      "Authentication Failed",
+      "Login Failed",
+      [
+        {
+          text: "Ok"
+        }
+      ],
+      {
+        cancelable: true
+      }
+    );
+  }
   postComment = async () => {
     if (this.state.caption == "") {
       ToastAndroid.show(
@@ -108,7 +141,6 @@ class HomeScreen extends Component {
         if (this.state.uploading) {
           this.setState({ uploading: false });
         }
-        //
       });
   };
   maybeRenderUploadingOverlay = () => {
@@ -127,8 +159,11 @@ class HomeScreen extends Component {
   };
 
   reply(key) {
-    this.setState({ parentCommentId: key, showModal: true });
-    // this.toggleModal();
+    if (this.state.name === "") {
+      this.setState({ parentCommentId: key, showLoginModal: true });
+    } else {
+      this.setState({ parentCommentId: key, showModal: true });
+    }
   }
   toggleModal() {
     this.setState({
@@ -137,12 +172,18 @@ class HomeScreen extends Component {
       parentCommentId: ""
     });
   }
+
+  toggleLoginModal() {
+    this.setState({
+      showLoginModal: !this.state.showLoginModal,
+      enterUserName: "",
+      enterPassword: ""
+    });
+  }
   render() {
     const RenderData = data => {
-      // console.log("data", data);
       if (data != null && data.length != 0) {
         if (this.state.uploading) this.setState({ uploading: false });
-        console.log(data);
         return (
           <FlatList
             style={styles.root}
@@ -158,8 +199,6 @@ class HomeScreen extends Component {
       }
     };
     const renderUserCard = ({ item }) => {
-      console.log("data", item.comment);
-
       return (
         <View style={styles.container}>
           <TouchableOpacity onPress={() => {}}>
@@ -183,28 +222,78 @@ class HomeScreen extends Component {
                 type="font-awesome"
                 color="#f50"
                 onPress={() => {
-                  getUpdatedSelectedItemsArray(item.key);
+                  // getUpdatedSelectedItemsArray(item.key);
                 }}
               />
             </View>
+            <TouchableOpacity
+              onPress={() =>
+                showComments(
+                  item.key,
+                  item.name,
+                  item.date,
+                  item.img_url,
+                  item.comment
+                )
+              }
+            >
+              <Text>show comments</Text>
+            </TouchableOpacity>
           </View>
         </View>
       );
     };
+    const showComments = (key, name, date, img_url, comment) => {
+      sendReplyData(key, name, date, img_url, comment);
+    };
 
-    // const RenderData = data => {
-    //   console.log(data);
-    // };
+    const sendReplyData = async (key, name, date, img_url, comment) => {
+      let myreplyData = [];
+      const firebase = require("firebase");
+
+      const commentRef = firebase.database().ref("comment/");
+
+      await commentRef
+        .orderByChild("parentCommentId")
+        .equalTo(key)
+        .on("value", data => {
+          let i = 0;
+          if (data.exists()) {
+            const json = data.val();
+            if (json != null) {
+              Object.values(json).map(item => {
+                const myObj = {
+                  key: Object.keys(json)[i],
+                  name: item.name,
+                  img_url: item.user_img_url,
+                  date: item.date,
+                  comment: item.comment
+                };
+                myreplyData.push(myObj);
+                i++;
+              });
+            }
+            Actions.ReplyScreen({ myreplyData, name, date, img_url, comment });
+          } else {
+            ToastAndroid.show("No Comment for this post", ToastAndroid.SHORT);
+          }
+        });
+    };
+
     return (
-      <ScrollView>
-        <HeaderComponentWithIcon headerText="Comment" />
+      <View>
+        <HeaderComponent headerText="Comment" />
         <View style={styles.container1}>
           {this.maybeRenderUploadingOverlay()}
           {RenderData(this.state.comments)}
         </View>
         <Button
           title="Post new comment"
-          onPress={() => this.toggleModal()}
+          onPress={
+            this.state.name === ""
+              ? () => this.toggleLoginModal()
+              : () => this.toggleModal()
+          }
           buttonStyle={{
             backgroundColor: "#00BCD4",
             alignItems: "flex-end",
@@ -247,10 +336,7 @@ class HomeScreen extends Component {
               >
                 <Button
                   style={styles.modalText}
-                  onPress={
-                    this.postComment
-                    //  this.postNewComment(dishId);
-                  }
+                  onPress={this.postComment}
                   buttonStyle={{
                     backgroundColor: "#ffffff"
                   }}
@@ -272,7 +358,6 @@ class HomeScreen extends Component {
                   style={styles.modalText}
                   onPress={() => {
                     this.toggleModal();
-                    // this.resetCommentDetails();
                   }}
                   buttonStyle={{
                     backgroundColor: "#ffffff"
@@ -286,7 +371,80 @@ class HomeScreen extends Component {
             </View>
           </View>
         </Modal>
-      </ScrollView>
+        <Modal
+          animationType={"slide"}
+          transparent
+          visible={this.state.showLoginModal}
+          onDismiss={() => this.toggleLoginModal()}
+          onRequestClose={() => this.toggleLoginModal()}
+        >
+          <View style={styles.modal}>
+            <View style={styles.dialog}>
+              <Input
+                placeholder="Email"
+                leftIcon={{ type: "font-awesome", name: "user-o" }}
+                onChangeText={username =>
+                  this.setState({ enterUserName: username })
+                }
+                value={this.state.enterUserName}
+                containerStyle={styles.formInput}
+              />
+              <Input
+                placeholder="Password"
+                secureTextEntry
+                leftIcon={{ type: "font-awesome", name: "key" }}
+                onChangeText={password =>
+                  this.setState({ enterPassword: password })
+                }
+                value={this.state.enterPassword}
+                containerStyle={styles.formInput}
+              />
+              <View
+                style={{
+                  marginTop: 20,
+                  flexDirection: "column",
+                  marginRight: 10,
+                  marginLeft: 10
+                }}
+              >
+                <Button
+                  style={styles.modalText}
+                  onPress={this.handleLogin}
+                  buttonStyle={{
+                    backgroundColor: "#ffffff"
+                  }}
+                  titleStyle={{
+                    color: "#00BCD4"
+                  }}
+                  title="Login"
+                />
+              </View>
+              <View
+                style={{
+                  marginTop: 30,
+                  flexDirection: "column",
+                  marginRight: 10,
+                  marginLeft: 10
+                }}
+              >
+                <Button
+                  style={styles.modalText}
+                  onPress={() => {
+                    this.toggleLoginModal();
+                  }}
+                  buttonStyle={{
+                    backgroundColor: "#ffffff"
+                  }}
+                  titleStyle={{
+                    color: "#00BCD4"
+                  }}
+                  title="Close"
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </View>
     );
   }
 }
@@ -302,6 +460,7 @@ const styles = StyleSheet.create({
   container1: {
     justifyContent: "center",
     width: "100%",
+    height: "82%",
     backgroundColor: "white",
     paddingTop: 20
   },
@@ -347,14 +506,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     margin: 10,
     color: "white"
+  },
+  formInput: {
+    margin: 20
   }
 });
 const mapStateToProps = state => {
-  const { isLoading, errMess, data, likeImagesKey, noOfLikes } = state.user;
-  return { isLoading, errMess, data, likeImagesKey, noOfLikes };
+  const { isLoading, errMess, data } = state.home;
+  return { isLoading, errMess, data };
 };
 
 export default connect(
   mapStateToProps,
-  { fetchUser }
+  { fetchComment }
 )(HomeScreen);
