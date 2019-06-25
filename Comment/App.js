@@ -1,12 +1,10 @@
 import React from "react";
 import { Platform, StatusBar, StyleSheet, View } from "react-native";
-import { AppLoading, Asset, Font, Icon } from "expo";
 import { createStore, applyMiddleware } from "redux";
 import { Provider } from "react-redux";
 import ReduxThunk from "redux-thunk";
 import reducers from "./src/common/CombineReducers";
 import RouterComponent from "./RouterComponent";
-//const { persistor, store } = ConfigureStore();
 
 export default class App extends React.Component {
   state = {
@@ -28,17 +26,6 @@ export default class App extends React.Component {
 
   render() {
     const store = createStore(reducers, {}, applyMiddleware(ReduxThunk));
-    // return (
-    //   <Provider store={store}>
-    //     <PersistGate persistor={persistor}>
-    //       <View style={styles.container}>
-    //         <AppNavigator />
-    //       </View>
-    //     </PersistGate>
-    //   </Provider>
-
-    // );
-    console.disableYellowBox = true;
 
     return (
       <Provider store={store}>
