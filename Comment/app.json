@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Comment",
+    "name": "Comment App",
     "description": "This project is really great.",
     "slug": "Comment",
     "privacy": "public",
@@ -8,20 +8,21 @@
     "platforms": ["ios", "android"],
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/comment.png",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/comment.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "updates": {
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true
+    },
+    "android": {
+      "package": "com.nikita.comment"
     }
   }
 }

@@ -85,7 +85,7 @@ class HomeScreen extends Component {
   };
 
   onLoginSuccess() {
-    console.log("success");
+    // console.log("success");
     this.setState({
       uploading: !this.state.uploading,
       name: this.state.enterUserName,
@@ -94,7 +94,7 @@ class HomeScreen extends Component {
     });
   }
   onLoginFailed() {
-    console.log("failure");
+    //  console.log("failure");
     this.setState({ uploading: !this.state.uploading });
     Alert.alert(
       "Authentication Failed",
@@ -137,7 +137,7 @@ class HomeScreen extends Component {
         parentCommentId
       })
       .then(() => {
-        console.log("success");
+        //  console.log("success");
         if (this.state.uploading) {
           this.setState({ uploading: false });
         }
